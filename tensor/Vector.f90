@@ -24,7 +24,7 @@ module modVector ! {{{
         procedure, pass :: dot_product_vector
         procedure, pass :: cross_product_vector
 
-        generic :: assignment(=) => assign_vector
+        generic :: assignment(=) => assign_vector, assign_vector_vector
         generic :: operator(+) => add_vector, add2_vector
         generic :: operator(-) => minus_vector, minus2_vector
         generic :: operator(*) => multiply_vector, multiply2_vector
