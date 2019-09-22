@@ -709,20 +709,381 @@ module ioHelper ! {{{
     implicit none
     type(IOlist) :: iolists
 end module ioHelper ! }}}
-module modMatrix ! {{{
+module mathConstants ! {{{
     use precisions
+!    use exceptation
+    use ioHelper
+    implicit none
+    real(kind=DP), parameter :: pi = 4e0_DP*atan(1e0_DP)
+    complex(kind=DP), parameter :: zi = cmplx(0e0_DP,1e0_DP)
+    real(kind=DP), parameter :: units(3, 3) = reshape( (/ 1e0_DP,0e0_DP,0e0_DP, 0e0_DP,1e0_DP,0e0_DP, 0e0_DP,0e0_DP,1e0_DP /), shape(units))
+    complex(kind=DP), parameter :: sigma_0(2, 2) =    reshape( (/ 1e0_DP,  0e0_DP, 0e0_DP,  1e0_DP /), shape(sigma_0))
+    complex(kind=DP), parameter :: sigma_x(2, 2) =    reshape( (/ 0e0_DP,  1e0_DP, 1e0_DP,  0e0_DP /), shape(sigma_x))
+    complex(kind=DP), parameter :: sigma_y(2, 2) = zi*reshape( (/ 0e0_DP, -1e0_DP, 1e0_DP,  0e0_DP /), shape(sigma_y))
+    complex(kind=DP), parameter :: sigma_z(2, 2) =    reshape( (/ 1e0_DP,  0e0_DP, 0e0_DP, -1e0_DP /), shape(sigma_z))
+    complex(kind=DP), parameter :: sigma(2, 2, 0:3) = (/ sigma_0, sigma_x, sigma_y, sigma_z /)
+    public:: pi, zi, sigma
+    contains
+
+! condition of an efficient convergence for bisec routine ! {{{
+! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! HOW TO USE
+! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! hoge hoge...
+! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+! EX)
+!   real(kind=DP), dimension(1:n) :: s_in, s_out, diff
+!   real(kind=DP) :: error_new, error_old
+!       do i = 1, 100
+!
+!           <some calculations for s_in & s_out>
+!
+!           diff(1:n) = s_out(1:n) - s_in(1:n)
+!           error_new = sqrt( sum(diff**2) ) / sqrt( sum(s_out**2) )
+!           call set_ratio(ratio, error_new,error_old, 5d-3)
+!
+!           s_in(1:n) = ratio * s_out(1:n) + (1e0_DP - ratio) * s_in(1:n)
+!       end do
+! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+    subroutine set_ratio(ratio_, error_new_, error_old_, ratio_eps_) ! {{{
+        implicit none
+        real(kind=DP), intent(inout) :: ratio_
+        real(kind=DP), intent(inout) :: error_old_
+        real(kind=DP), intent(in)    :: error_new_
+        real(kind=DP), intent(in)    :: ratio_eps_
+            if ( error_old_ /= 0e0_DP) then
+                if (error_new_ > error_old_*2e0_DP) then
+                    ratio_ = ratio_*1e-1_DP
+                else if (error_new_ > error_old_) then
+                    ratio_ = ratio_ / 2e0_DP
+                else
+                    ratio_ = ratio_ * 1.15e0_DP
+                endif
+                if (ratio_ < ratio_eps_) ratio_ = 2e0_DP!10.0e0_DP
+            end if
+            error_old_ = error_new_
+        return
+    end subroutine set_ratio ! }}}
+! }}}
+
+    function theta(x,y) ! {{{
+        implicit none
+        real(kind=DP) :: x, y, theta
+            theta = ( 1e0_DP + (x-y)/abs(x-y) ) / 2e0_DP
+        return
+    end function theta ! }}}
+
+end module mathConstants  ! }}}
+module modVector ! {{{
+    use precisions
+    use formats
+    type :: vector ! {{{
+        integer(kind=IT) :: dim
+        complex(kind=DP), allocatable :: value(:)
+        contains
+        procedure, pass :: init => init_vector
+!        procedure, pass :: conjg => conjg_vector
+        procedure, pass :: length_vector
+        procedure, pass :: length_vector_vector
+        generic :: length => length_vector, length_vector_vector
+
+        procedure, pass :: assign_vector
+        procedure, pass :: assign_vector_vector
+        procedure, pass :: add_vector
+        procedure, pass(this) :: add2_vector
+        procedure, pass :: minus_vector
+        procedure, pass(this) :: minus2_vector
+        procedure, pass :: multiply_vector
+        procedure, pass(this) :: multiply2_vector
+        procedure, pass :: divide_vector
+
+        procedure, pass :: dot_product_vector
+        procedure, pass :: cross_product_vector
+
+        generic :: assignment(=) => assign_vector
+        generic :: operator(+) => add_vector, add2_vector
+        generic :: operator(-) => minus_vector, minus2_vector
+        generic :: operator(*) => multiply_vector, multiply2_vector
+        generic :: operator(/) => divide_vector
+
+        generic :: operator(.dot.) => dot_product_vector
+        generic :: operator(.x.) => cross_product_vector
+        procedure, pass :: print => print_vector
+        final :: finalize_vector
+    end type vector ! }}}
+    contains
+        subroutine init_vector(this, n) ! {{{
+            class(vector), intent(inout) :: this
+            integer(kind=IT), intent(in) :: n
+                this%dim = n
+                allocate(this%value(1:n))
+            return
+        end subroutine init_vector ! }}}
+
+        subroutine finalize_vector(this) ! {{{
+            implicit none
+            type(vector), intent(inout) :: this
+                deallocate(this%value)
+            return
+        end subroutine finalize_vector ! }}}
+
+        function length_vector(this) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            real(kind=DP) :: res
+            integer(kind=IT) :: i
+                res = 0e0_DP
+                do i = 1, this%dim
+                    res = res + this%value(i)**2
+                end do
+            return
+        end function length_vector ! }}}
+
+        function length_vector_vector(this, v_) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            class(vector), intent(in) :: v_
+            real(kind=DP) :: res
+            integer(kind=IT) :: i
+                res = 0e0_DP
+                do i = 1, this%dim
+                    res = res + (this%value(i) - v_%value(i))**2
+                end do
+            return
+        end function length_vector_vector ! }}}
+
+        subroutine assign_vector(this, v_) ! {{{
+            implicit none
+            class(vector), intent(inout) :: this
+            class(*), intent(in) :: v_
+                select type (v_)
+                    type is (real(kind=DP))
+                        this%value(:) = v_
+                    type is (complex(kind=DP))
+                        this%value(:) = v_
+                    type is (vector)
+                        this%value(:) = v_%value(:)
+                end select
+            return
+        end subroutine assign_vector ! }}}
+
+        subroutine assign_vector_vector(this, v_) ! {{{
+            implicit none
+            class(vector), intent(inout) :: this
+            class(*), intent(in) :: v_(:)
+                select type (v_)
+                    type is (real(kind=DP))
+                        this%value(:) = v_(:)
+                    type is (complex(kind=DP))
+                        this%value(:) = v_(:)
+                end select
+            return
+        end subroutine assign_vector_vector ! }}}
+
+        function add_vector(this, p_) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            class(*), intent(in) :: p_
+            class(vector), allocatable:: res
+            integer(kind=IT) :: i
+                allocate(res)
+                call res%init(this%dim)
+                select type (p_)
+                    type is (vector)
+                        if (this%dim == p_%dim) then
+                            res%value(:) = this%value(:) + p_%value(:)
+                        else
+                            print *, "Error, dimension of the vectors does not match."
+                        end if
+                end select
+            return
+        end function add_vector ! }}}
+
+        function add2_vector(p_, this) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            class(*), intent(in) :: p_
+            class(vector), allocatable:: res
+            integer(kind=IT) :: i
+                allocate(res)
+                call res%init(this%dim)
+                select type (p_)
+                    type is (vector)
+                        if (this%dim == p_%dim) then
+                            res%value(:) = this%value(:) + p_%value(:)
+                        else
+                            print *, "Error, dimension of the vectors does not match."
+                        end if
+                end select
+            return
+        end function add2_vector ! }}}
+
+        function minus_vector(this, p_) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            class(*), intent(in) :: p_
+            class(vector), allocatable:: res
+            integer(kind=IT) :: i
+                allocate(res)
+                call res%init(this%dim)
+                select type (p_)
+                    type is (vector)
+                        if (this%dim == p_%dim) then
+                            res%value(:) = this%value(:) - p_%value(:)
+                        else
+                            print *, "Error, dimension of the vectors does not match."
+                        end if
+                end select
+            return
+        end function minus_vector ! }}}
+
+        function minus2_vector(p_, this) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            class(*), intent(in) :: p_
+            class(vector), allocatable:: res
+            integer(kind=IT) :: i
+                allocate(res)
+                call res%init(this%dim)
+                select type (p_)
+                    type is (vector)
+                        if (this%dim == p_%dim) then
+                            res%value(:) = p_%value(:) - this%value(:)
+                        else
+                            print *, "Error, dimension of the vectors does not match."
+                        end if
+                end select
+            return
+        end function minus2_vector ! }}}
+
+        function multiply_vector(this, p_) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            CLASS(*), intent(in) :: p_
+            class(vector), allocatable :: res
+                allocate(res)
+                call res%init(this%dim)
+                select type(p_)
+                    type is (real(kind=DP))
+                        res%value(:) = this%value(:) * p_
+                    type is (complex(kind=DP))
+                        res%value(:) = this%value(:) * p_
+                end select
+            return
+        end function multiply_vector ! }}}
+
+        function multiply2_vector(p_, this) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            CLASS(*), intent(in) :: p_
+            class(vector), allocatable :: res
+                allocate(res)
+                call res%init(this%dim)
+                select type(p_)
+                    type is (real(kind=DP))
+                        res%value(:) = p_ * this%value(:)
+                    type is (complex(kind=DP))
+                        res%value(:) = p_ * this%value(:)
+                end select
+            return
+        end function multiply2_vector ! }}}
+
+        function divide_vector(this, p_) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            CLASS(*), intent(in) :: p_
+            class(vector), allocatable :: res
+                allocate(res)
+                call res%init(this%dim)
+                select type(p_)
+                    type is (real(kind=DP))
+                        res%value(:) = this%value(:) / p_
+                    type is (complex(kind=DP))
+                        res%value(:) = this%value(:) / p_
+                end select
+            return
+        end function divide_vector ! }}}
+
+        function dot_product_vector(this, p_) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            class(vector), intent(in) :: p_
+            complex(kind=DP) :: res
+                if (this%dim == p_%dim) then
+                    res = dot_product(this%value(:), p_%value(:))
+                else
+                    print *, "Error, dimension of the vectors does not match."
+                end if
+        end function dot_product_vector ! }}}
+
+        function cross_product_vector(this, p_) result(res) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            class(vector), intent(in) :: p_
+            class(vector), allocatable :: res
+                allocate(res)
+                call res%init(this%dim)
+                if ((this%dim == p_%dim) .and. (this%dim == 3_IT)) then
+                    res%value(1) = this%value(2) * p_%value(3) - this%value(3) * p_%value(2)
+                    res%value(2) = this%value(3) * p_%value(1) - this%value(1) * p_%value(3)
+                    res%value(3) = this%value(1) * p_%value(2) - this%value(2) * p_%value(1)
+                else
+                    print *, "Error, dimension of the vectors does not match."
+                end if
+        end function cross_product_vector ! }}}
+
+        subroutine print_vector(this, unit_num_) ! {{{
+            implicit none
+            class(vector), intent(inout) :: this
+            integer(kind=IT), intent(in) :: unit_num_(1:2)
+            integer(kind=IT) :: j
+            character(:), allocatable :: style
+
+                style = lt//iform1
+                do j = 1, this%dim
+                    style = style//space//Deform1
+                end do
+                style = style//rt
+
+                write(unit_num_(1), style) j,  real(this%value(:))
+                write(unit_num_(2), style) j, aimag(this%value(:))
+            return
+        end subroutine print_vector ! }}}
+end module modVector ! }}}
+module modMatrix ! {{{
+!  this module uses
+!   LAPACK: zgetrf, zgetri
+!
+    use precisions
+    use formats
     type :: matrix ! {{{
         integer(kind=IT) :: dim
         complex(kind=DP), allocatable :: value(:,:)
         contains
         procedure, pass :: init => init_matrix
+        procedure, pass :: inverse => inverse_matrix
+        procedure, pass :: trace => trace_matrix
+        procedure, pass :: conjg => conjg_matrix
+        procedure, pass :: toArray => convert_toArray_matrix
+        procedure, pass :: fromArray => convert_fromArray_matrix
+        procedure, pass :: diagonalize_N => diagonalize_N_matrix
+        procedure, pass :: diagonalize_V => diagonalize_V_matrix
+
         procedure, pass :: assign_matrix
         procedure, pass :: add_matrix
-!        procedure, pass :: multiply_c_mat2x2
-!        procedure, pass :: multiply_r_mat2x2
+        procedure, pass(this) :: add2_matrix
+        procedure, pass :: minus_matrix
+        procedure, pass(this) :: minus2_matrix
+        procedure, pass :: multiply_matrix
+        procedure, pass(this) :: multiply2_matrix
+        procedure, pass :: divide_matrix
+        procedure, pass(this) :: divide2_matrix
         generic :: assignment(=) => assign_matrix
-        generic :: operator(+) => add_matrix
-!        generic :: operator(*) => multiply_r_mat2x2, multiply_c_mat2x2
+        generic :: operator(+) => add_matrix, add2_matrix
+        generic :: operator(-) => minus_matrix, minus2_matrix
+        generic :: operator(*) => multiply_matrix, multiply2_matrix
+        generic :: operator(/) => divide_matrix, divide2_matrix
+        procedure, pass :: print => print_matrix
         final :: finalize_matrix
     end type matrix ! }}}
     contains
@@ -737,50 +1098,328 @@ module modMatrix ! {{{
         subroutine finalize_matrix(this) ! {{{
             implicit none
             type(matrix), intent(inout) :: this
-!                deallocate(this%value)
+                deallocate(this%value)
             return
         end subroutine finalize_matrix ! }}}
 
         subroutine assign_matrix(this, m_) ! {{{
             implicit none
             class(matrix), intent(inout) :: this
-            class(matrix), intent(in) :: m_
-                this%value(:,:) = m_%value(:,:)
+            class(*), intent(in) :: m_
+                select type (m_)
+                    type is (real(kind=DP))
+                        this%value(:,:) = m_
+                    type is (complex(kind=DP))
+                        this%value(:,:) = m_
+                    type is (matrix)
+                        this%value(:,:) = m_%value(:,:)
+                end select
             return
         end subroutine assign_matrix ! }}}
 
-        function add_matrix(this, m_) result(res) ! {{{
+        function inverse_matrix(this) result (res) ! {{{
             implicit none
             class(matrix), intent(in) :: this
-            class(matrix), intent(in) :: m_
-            class(matrix), allocatable:: res
+            class(matrix), allocatable :: res
+            integer(4) :: info
+            integer(4) :: lda
+            complex(kind=DP) :: work(64*this%dim)
+            complex(kind=DP) :: A(this%dim,this%dim)
+            integer(4) :: ipiv(this%dim)
+                lda = this%dim
                 allocate(res)
                 call res%init(this%dim)
-                res%value(:,:) = this%value(:,:) + m_%value(:,:)
+                A(:,:) = this%value(:,:)
+                call zgetrf(this%dim, this%dim, A, lda, ipiv, info)
+                if (info == 0) then
+                    call zgetri(this%dim, A, this%dim, ipiv, work, lda, info)
+                    res%value(:,:) = A(:,:)
+                else
+                    call error_header("info is not zero", .true., .true.)
+                end if
+            return
+        end function inverse_matrix ! }}}
+
+        function trace_matrix(this) result (res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            complex(kind=DP), allocatable :: res
+            integer(kind=IT) :: i
+                allocate(res)
+                do i = 1, this%dim
+                    res = res + this%value(i,i)
+                end do
+            return
+        end function trace_matrix ! }}}
+
+        function conjg_matrix(this) result (res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            class(matrix), allocatable :: res
+            integer(kind=IT) :: i, j
+                allocate(res)
+                call res%init(this%dim)
+                do i = 1, this%dim
+                    do j = 1, this%dim
+                        res%value(j,i) = conjg(this%value(i,j))
+                    end do
+                end do
+            return
+        end function conjg_matrix ! }}}
+
+        subroutine convert_toArray_matrix(this, res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            complex(kind=DP), intent(out) :: res(1:this%dim*this%dim)
+                res(:) = reshape(this%value(:,:), shape(res))
+            return
+        end subroutine convert_toArray_matrix ! }}}
+
+        subroutine convert_fromArray_matrix(this, res) ! {{{
+            implicit none
+            class(matrix), intent(inout) :: this
+            complex(kind=DP), intent(in) :: res(1:this%dim*this%dim)
+                this%value(:,:) = reshape(res(:), shape(this%value))
+            return
+        end subroutine convert_fromArray_matrix ! }}}
+
+        subroutine diagonalize_N_matrix(this, EigenValue_) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            real(kind=DP), intent(out) :: EigenValue_(1:this%dim)
+            complex(kind=DP) :: work(4*this%dim-1)
+            integer(kind=IT) :: rwork(3*this%dim-2)
+
+            integer(kind=IT) :: n, lwork
+            integer(4) :: info
+                n = ubound(this%value,1)
+                lwork = 4*n - 1
+
+                call zheev('N', 'L', n, this%value, n, EigenValue_, work, lwork, rwork, info)
+                if (info .ne. 0) then
+                    write(*,*) "error! in diagonalization info = ", info
+                end if
+
+            return
+        end subroutine diagonalize_N_matrix ! }}}
+
+        subroutine diagonalize_V_matrix(this, EigenValue_, EigenVector_) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            real(kind=DP), intent(out) :: EigenValue_(1:this%dim)
+            class(matrix), intent(out) :: EigenVector_
+            complex(kind=DP) :: work(4*this%dim-1)
+            integer(kind=IT) :: rwork(3*this%dim-2)
+
+            integer(kind=IT) :: n, lwork
+            integer(4) :: info
+                n = ubound(this%value,1)
+                lwork = 4*n - 1
+
+                call EigenVector_%init(this%dim)
+                EigenVector_ = this
+                call zheev('V', 'L', n, EigenVector_%value, n, EigenValue_, work, lwork, rwork, info)
+
+                if (info .ne. 0) then
+                    write(*,*) "error! in diagonalization info = ", info
+                end if
+
+            return
+        end subroutine diagonalize_V_matrix ! }}}
+
+        function add_matrix(this, p_) result(res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            class(*), intent(in) :: p_
+            class(matrix), allocatable:: res
+            integer(kind=IT) :: i
+                allocate(res)
+                call res%init(this%dim)
+                select type (p_)
+                    type is (real(kind=DP))
+                        res%value(:,:) = this%value(:,:)
+                        do i = 1, this%dim
+                            res%value(i,i) = res%value(i,i) + p_
+                        end do
+                    type is (complex(kind=DP))
+                        res%value(:,:) = this%value(:,:)
+                        do i = 1, this%dim
+                            res%value(i,i) = res%value(i,i) + p_
+                        end do
+                    type is (matrix)
+                        res%value(:,:) = this%value(:,:) + p_%value(:,:)
+                end select
             return
         end function add_matrix ! }}}
-!
-!        function multiply_r_mat2x2(this, r_) result(res) ! {{{
-!            implicit none
-!            class(mat2x2), intent(in) :: this
-!            real(kind=DP), intent(in) :: r_
-!            class(mat2x2), pointer :: res
-!                allocate(res)
-!                res%coef(0:3)       = r_ * this%coef(0:3)
-!                res%comp(1:2,1:2)   = r_ * this%comp(1:2,1:2)
-!            return
-!        end function multiply_r_mat2x2 ! }}}
-!
-!        function multiply_c_mat2x2(this, c_) result(res) ! {{{
-!            implicit none
-!            class(mat2x2), intent(in) :: this
-!            complex(kind=DP), intent(in) :: c_
-!            class(mat2x2), pointer :: res
-!                allocate(res)
-!                res%coef(0:3)       = c_ * this%coef(0:3)
-!                res%comp(1:2,1:2)   = c_ * this%comp(1:2,1:2)
-!            return
-!        end function multiply_c_mat2x2 ! }}}
+
+        function add2_matrix(p_, this) result(res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            class(*), intent(in) :: p_
+            class(matrix), allocatable:: res
+            integer(kind=IT) :: i
+                allocate(res)
+                call res%init(this%dim)
+                select type (p_)
+                    type is (real(kind=DP))
+                        res%value(:,:) = this%value(:,:)
+                        do i = 1, this%dim
+                            res%value(i,i) = res%value(i,i) + p_
+                        end do
+                    type is (complex(kind=DP))
+                        res%value(:,:) = this%value(:,:)
+                        do i = 1, this%dim
+                            res%value(i,i) = res%value(i,i) + p_
+                        end do
+                    type is (matrix)
+                        res%value(:,:) = this%value(:,:) + p_%value(:,:)
+                end select
+            return
+        end function add2_matrix ! }}}
+
+        function minus_matrix(this, p_) result(res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            class(*), intent(in) :: p_
+            class(matrix), allocatable:: res
+            integer(kind=IT) :: i
+                allocate(res)
+                call res%init(this%dim)
+                select type (p_)
+                    type is (real(kind=DP))
+                        res%value(:,:) = this%value(:,:)
+                        do i = 1, this%dim
+                            res%value(i,i) = res%value(i,i) - p_
+                        end do
+                    type is (complex(kind=DP))
+                        res%value(:,:) = this%value(:,:)
+                        do i = 1, this%dim
+                            res%value(i,i) = res%value(i,i) - p_
+                        end do
+                    type is (matrix)
+                        res%value(:,:) = this%value(:,:) - p_%value(:,:)
+                end select
+            return
+        end function minus_matrix ! }}}
+
+        function minus2_matrix(p_, this) result(res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            class(*), intent(in) :: p_
+            class(matrix), allocatable:: res
+            integer(kind=IT) :: i
+                allocate(res)
+                call res%init(this%dim)
+                select type (p_)
+                    type is (real(kind=DP))
+                        res%value(:,:) = this%value(:,:)
+                        do i = 1, this%dim
+                            res%value(i,i) = p_ - res%value(i,i)
+                        end do
+                    type is (complex(kind=DP))
+                        res%value(:,:) = this%value(:,:)
+                        do i = 1, this%dim
+                            res%value(i,i) = p_ - res%value(i,i)
+                        end do
+                    type is (matrix)
+                        res%value(:,:) = p_%value(:,:) - this%value(:,:)
+                end select
+            return
+        end function minus2_matrix ! }}}
+
+        function multiply_matrix(this, p_) result(res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            CLASS(*), intent(in) :: p_
+            class(matrix), allocatable :: res
+                allocate(res)
+                call res%init(this%dim)
+                select type(p_)
+                    type is (real(kind=DP))
+                        res%value(:,:) = this%value(:,:) * p_
+                    type is (complex(kind=DP))
+                        res%value(:,:) = this%value(:,:) * p_
+                    type is (matrix)
+                        res%value(:,:) = matmul(this%value(:,:), p_%value(:,:))
+                end select
+            return
+        end function multiply_matrix ! }}}
+
+        function multiply2_matrix(p_, this) result(res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            CLASS(*), intent(in) :: p_
+            class(matrix), allocatable :: res
+                allocate(res)
+                call res%init(this%dim)
+                select type(p_)
+                    type is (real(kind=DP))
+                        res%value(:,:) = p_ * this%value(:,:)
+                    type is (complex(kind=DP))
+                        res%value(:,:) = p_ * this%value(:,:)
+                    type is (matrix)
+                        res%value(:,:) = matmul(p_%value(:,:), this%value(:,:))
+                end select
+            return
+        end function multiply2_matrix ! }}}
+
+        function divide_matrix(this, p_) result(res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            CLASS(*), intent(in) :: p_
+            class(matrix), allocatable :: res
+                allocate(res)
+                call res%init(this%dim)
+                select type(p_)
+                    type is (real(kind=DP))
+                        res%value(:,:) = this%value(:,:) / p_
+                    type is (complex(kind=DP))
+                        res%value(:,:) = this%value(:,:) / p_
+                    type is (matrix)
+                        res = p_%inverse()
+                        res%value(:,:) = this%value(:,:) * res%value(:,:)
+                end select
+            return
+        end function divide_matrix ! }}}
+
+        function divide2_matrix(p_, this) result(res) ! {{{
+            implicit none
+            class(matrix), intent(in) :: this
+            CLASS(*), intent(in) :: p_
+            class(matrix), allocatable :: res
+                allocate(res)
+                call res%init(this%dim)
+                res = this%inverse()
+                select type(p_)
+                    type is (real(kind=DP))
+                        res%value(:,:) = p_ * res%value(:,:)
+                    type is (complex(kind=DP))
+                        res%value(:,:) = p_ * res%value(:,:)
+                    type is (matrix)
+                        res%value(:,:) = p_%value(:,:) * res%value(:,:)
+                end select
+            return
+        end function divide2_matrix ! }}}
+
+        subroutine print_matrix(this, unit_num_) ! {{{
+            implicit none
+            class(matrix), intent(inout) :: this
+            integer(kind=IT), intent(in) :: unit_num_(1:2)
+            integer(kind=IT) :: j
+            character(:), allocatable :: style
+
+                style = lt//iform1
+                do j = 1, this%dim
+                    style = style//space//Deform1
+                end do
+                style = style//rt
+
+                do j = 1, this%dim
+                    write(unit_num_(1), style) j,  real(this%value(:, j))
+                    write(unit_num_(2), style) j, aimag(this%value(:, j))
+                end do
+            return
+        end subroutine print_matrix ! }}}
 end module modMatrix ! }}}
 module modSection !{{{
     use precisions
