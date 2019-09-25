@@ -715,13 +715,21 @@ module mathConstants ! {{{
     use ioHelper
     implicit none
     real(kind=DP), parameter :: pi = 4e0_DP*atan(1e0_DP)
+    complex(kind=DP), parameter :: z0 = cmplx(0e0_DP,0e0_DP)
+    complex(kind=DP), parameter :: z1 = cmplx(1e0_DP,0e0_DP)
     complex(kind=DP), parameter :: zi = cmplx(0e0_DP,1e0_DP)
     real(kind=DP), parameter :: units(3, 3) = reshape( (/ 1e0_DP,0e0_DP,0e0_DP, 0e0_DP,1e0_DP,0e0_DP, 0e0_DP,0e0_DP,1e0_DP /), shape(units))
     complex(kind=DP), parameter :: sigma_0(2, 2) =    reshape( (/ 1e0_DP,  0e0_DP, 0e0_DP,  1e0_DP /), shape(sigma_0))
     complex(kind=DP), parameter :: sigma_x(2, 2) =    reshape( (/ 0e0_DP,  1e0_DP, 1e0_DP,  0e0_DP /), shape(sigma_x))
     complex(kind=DP), parameter :: sigma_y(2, 2) = zi*reshape( (/ 0e0_DP, -1e0_DP, 1e0_DP,  0e0_DP /), shape(sigma_y))
     complex(kind=DP), parameter :: sigma_z(2, 2) =    reshape( (/ 1e0_DP,  0e0_DP, 0e0_DP, -1e0_DP /), shape(sigma_z))
-    complex(kind=DP), parameter :: sigma(2, 2, 0:3) = (/ sigma_0, sigma_x, sigma_y, sigma_z /)
+    complex(kind=DP), parameter :: sigma(2, 2, 0:3) = reshape( &
+                                                     &(/ z1, z0, z0, z1, &
+                                                     &   z0, z1, z1, z0, &
+                                                     &   z0,-zi, zi, z0, &
+                                                     &   z1, z0, z0,-z1  /), shape(sigma))
+
+
     public:: pi, zi, sigma
     contains
 
