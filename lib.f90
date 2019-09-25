@@ -1048,6 +1048,7 @@ module modMatrix ! {{{
         procedure, pass :: diagonalize_V => diagonalize_V_matrix
 
         procedure, pass :: assign_matrix
+        procedure, pass :: assign_array_matrix
         procedure, pass :: add_matrix
         procedure, pass(this) :: add2_matrix
         procedure, pass :: minus_matrix
@@ -1056,7 +1057,7 @@ module modMatrix ! {{{
         procedure, pass(this) :: multiply2_matrix
         procedure, pass :: divide_matrix
         procedure, pass(this) :: divide2_matrix
-        generic :: assignment(=) => assign_matrix
+        generic :: assignment(=) => assign_matrix, assign_array_matrix
         generic :: operator(+) => add_matrix, add2_matrix
         generic :: operator(-) => minus_matrix, minus2_matrix
         generic :: operator(*) => multiply_matrix, multiply2_matrix
@@ -1094,6 +1095,19 @@ module modMatrix ! {{{
                 end select
             return
         end subroutine assign_matrix ! }}}
+
+        subroutine assign_array_matrix(this, m_) ! {{{
+            implicit none
+            class(matrix), intent(inout) :: this
+            class(*), intent(in) :: m_(:)
+                select type (m_)
+                    type is (real(kind=DP))
+                        this%value(:,:) = reshape(m_, shape(this%value))
+                    type is (complex(kind=DP))
+                        this%value(:,:) = reshape(m_, shape(this%value))
+                end select
+            return
+        end subroutine assign_array_matrix ! }}}
 
         function inverse_matrix(this) result (res) ! {{{
             implicit none
@@ -1382,7 +1396,7 @@ module modMatrix ! {{{
         subroutine print_matrix(this, unit_num_) ! {{{
             implicit none
             class(matrix), intent(inout) :: this
-            integer(kind=IT), intent(in) :: unit_num_(1:2)
+            integer(kind=IT), intent(in),optional :: unit_num_(1:2)
             integer(kind=IT) :: j
             character(:), allocatable :: style
 
@@ -1392,10 +1406,21 @@ module modMatrix ! {{{
                 end do
                 style = style//rt
 
-                do j = 1, this%dim
-                    write(unit_num_(1), style) j,  real(this%value(:, j))
-                    write(unit_num_(2), style) j, aimag(this%value(:, j))
-                end do
+                if (present(unit_num_)) then
+                    do j = 1, this%dim
+                        write(unit_num_(1), style) j,  real(this%value(:, j))
+                        write(unit_num_(2), style) j, aimag(this%value(:, j))
+                    end do
+                else
+                    print *, "real part:"
+                    do j = 1, this%dim
+                        write(*, style) j,  real(this%value(:, j))
+                    end do
+                    print *, "imaginary part:"
+                    do j = 1, this%dim
+                        write(*, style) j, aimag(this%value(:, j))
+                    end do
+                end if
             return
         end subroutine print_matrix ! }}}
 end module modMatrix ! }}}
