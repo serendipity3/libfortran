@@ -3,7 +3,7 @@ module modVector ! {{{
     use formats
     type :: vector ! {{{
         integer(kind=IT) :: dim
-        complex(kind=DP), allocatable :: value(:)
+        real(kind=DP), allocatable :: value(:)
         contains
         procedure, pass :: init => init_vector
 !        procedure, pass :: conjg => conjg_vector
@@ -14,7 +14,6 @@ module modVector ! {{{
         procedure, pass :: assign_vector
         procedure, pass :: assign_vector_vector
         procedure, pass :: add_vector
-        procedure, pass(this) :: add2_vector
         procedure, pass :: minus_vector
         procedure, pass(this) :: minus2_vector
         procedure, pass :: multiply_vector
@@ -25,7 +24,7 @@ module modVector ! {{{
         procedure, pass :: cross_product_vector
 
         generic :: assignment(=) => assign_vector, assign_vector_vector
-        generic :: operator(+) => add_vector, add2_vector
+        generic :: operator(+) => add_vector
         generic :: operator(-) => minus_vector, minus2_vector
         generic :: operator(*) => multiply_vector, multiply2_vector
         generic :: operator(/) => divide_vector
@@ -83,8 +82,6 @@ module modVector ! {{{
                 select type (v_)
                     type is (real(kind=DP))
                         this%value(:) = v_
-                    type is (complex(kind=DP))
-                        this%value(:) = v_
                     type is (vector)
                         this%value(:) = v_%value(:)
                 end select
@@ -98,8 +95,6 @@ module modVector ! {{{
                 select type (v_)
                     type is (real(kind=DP))
                         this%value(:) = v_(:)
-                    type is (complex(kind=DP))
-                        this%value(:) = v_(:)
                 end select
             return
         end subroutine assign_vector_vector ! }}}
@@ -107,40 +102,18 @@ module modVector ! {{{
         function add_vector(this, p_) result(res) ! {{{
             implicit none
             class(vector), intent(in) :: this
-            class(*), intent(in) :: p_
+            class(vector), intent(in) :: p_
             class(vector), allocatable:: res
             integer(kind=IT) :: i
                 allocate(res)
                 call res%init(this%dim)
-                select type (p_)
-                    type is (vector)
-                        if (this%dim == p_%dim) then
-                            res%value(:) = this%value(:) + p_%value(:)
-                        else
-                            print *, "Error, dimension of the vectors does not match."
-                        end if
-                end select
+                if (this%dim == p_%dim) then
+                    res%value(:) = this%value(:) + p_%value(:)
+                else
+                    print *, "Error, dimension of the vectors does not match."
+                end if
             return
         end function add_vector ! }}}
-
-        function add2_vector(p_, this) result(res) ! {{{
-            implicit none
-            class(vector), intent(in) :: this
-            class(*), intent(in) :: p_
-            class(vector), allocatable:: res
-            integer(kind=IT) :: i
-                allocate(res)
-                call res%init(this%dim)
-                select type (p_)
-                    type is (vector)
-                        if (this%dim == p_%dim) then
-                            res%value(:) = this%value(:) + p_%value(:)
-                        else
-                            print *, "Error, dimension of the vectors does not match."
-                        end if
-                end select
-            return
-        end function add2_vector ! }}}
 
         function minus_vector(this, p_) result(res) ! {{{
             implicit none
@@ -259,7 +232,7 @@ module modVector ! {{{
         subroutine print_vector(this, unit_num_) ! {{{
             implicit none
             class(vector), intent(inout) :: this
-            integer(kind=IT), intent(in) :: unit_num_(1:2)
+            integer(kind=IT), intent(in) :: unit_num_
             integer(kind=IT) :: j
             character(:), allocatable :: style
 
@@ -269,8 +242,7 @@ module modVector ! {{{
                 end do
                 style = style//rt
 
-                write(unit_num_(1), style) j,  real(this%value(:))
-                write(unit_num_(2), style) j, aimag(this%value(:))
+                write(unit_num_, style) j,  this%value(:)
             return
         end subroutine print_vector ! }}}
 end module modVector ! }}}
