@@ -947,8 +947,6 @@ module modVector ! {{{
                 select type(p_)
                     type is (real(kind=DP))
                         res%value(:) = this%value(:) * p_
-                    type is (complex(kind=DP))
-                        res%value(:) = this%value(:) * p_
                 end select
             return
         end function multiply_vector ! }}}
@@ -962,8 +960,6 @@ module modVector ! {{{
                 call res%init(this%dim)
                 select type(p_)
                     type is (real(kind=DP))
-                        res%value(:) = p_ * this%value(:)
-                    type is (complex(kind=DP))
                         res%value(:) = p_ * this%value(:)
                 end select
             return
@@ -979,8 +975,6 @@ module modVector ! {{{
                 select type(p_)
                     type is (real(kind=DP))
                         res%value(:) = this%value(:) / p_
-                    type is (complex(kind=DP))
-                        res%value(:) = this%value(:) / p_
                 end select
             return
         end function divide_vector ! }}}
@@ -989,7 +983,7 @@ module modVector ! {{{
             implicit none
             class(vector), intent(in) :: this
             class(vector), intent(in) :: p_
-            complex(kind=DP) :: res
+            real(kind=DP) :: res
                 if (this%dim == p_%dim) then
                     res = dot_product(this%value(:), p_%value(:))
                 else
