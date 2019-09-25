@@ -226,17 +226,21 @@ module modVector ! {{{
         subroutine print_vector(this, unit_num_) ! {{{
             implicit none
             class(vector), intent(inout) :: this
-            integer(kind=IT), intent(in) :: unit_num_
+            integer(kind=IT), intent(in), optional :: unit_num_
             integer(kind=IT) :: j
             character(:), allocatable :: style
 
-                style = lt//iform1
+                style = lt
                 do j = 1, this%dim
                     style = style//space//Deform1
                 end do
                 style = style//rt
 
-                write(unit_num_, style) j,  this%value(:)
+                if (present(unit_num_)) then
+                    write(unit_num_, style) this%value(:)
+                else
+                    write(*, style) this%value(:)
+                end if
             return
         end subroutine print_vector ! }}}
 end module modVector ! }}}
