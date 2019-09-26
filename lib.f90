@@ -817,7 +817,6 @@ module modVector ! {{{
 
         generic :: operator(.dot.) => dot_product_vector
         generic :: operator(.x.) => cross_product_vector
-        procedure, pass :: print => print_vector
 
         generic :: write(formatted) => write_formatted_vector
         final :: finalize_vector
@@ -1010,27 +1009,6 @@ module modVector ! {{{
                     print *, "Error, dimension of the vectors does not match."
                 end if
         end function cross_product_vector ! }}}
-
-        subroutine print_vector(this, unit_num_) ! {{{
-            implicit none
-            class(vector), intent(inout) :: this
-            integer(kind=IT), intent(in), optional :: unit_num_
-            integer(kind=IT) :: j
-            character(:), allocatable :: style
-
-                style = lt
-                do j = 1, this%dim
-                    style = style//space//Deform1
-                end do
-                style = style//rt
-
-                if (present(unit_num_)) then
-                    write(unit_num_, style) this%value(:)
-                else
-                    write(*, style) this%value(:)
-                end if
-            return
-        end subroutine print_vector ! }}}
 
         subroutine write_formatted_vector(this,unit,iotype,vlist,iostat,iomsg) ! {{{
             implicit none

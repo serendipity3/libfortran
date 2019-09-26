@@ -41,7 +41,7 @@ program main
 
         call p%diagonalize_N(a%value)
         call p%diagonalize_V(a%value, r)
-        call a%print()
+        print *, a
 
         call r%print()
 
