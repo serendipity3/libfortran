@@ -1,13 +1,3 @@
-# libfortran
-Basic library for modern Fortran
-
-## HOWTO USE
-```bash
-$ ifort -fpp -mkl lib.f90 test.f90  # for intel Fortran Compiler
-```
-
-`test.f90`
-```fortran
 program main
     use precisions
     use formats
@@ -54,5 +44,3 @@ program main
         r = p + q
     stop
 end program main
-
-```
