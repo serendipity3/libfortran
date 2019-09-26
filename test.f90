@@ -9,7 +9,7 @@ program main
     type(vector) :: a, b, c
     type(vectorComplex) :: s, t, u
 
-    type(matrix) :: p, q, r
+    type(matrixComplex) :: p, q, r
 
         call a%init(3)
         call b%init(3)
