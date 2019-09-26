@@ -807,6 +807,8 @@ module modVector ! {{{
         procedure, pass :: dot_product_vector
         procedure, pass :: cross_product_vector
 
+        procedure, pass :: write_formatted_vector
+
         generic :: assignment(=) => assign_vector, assign_vector_vector
         generic :: operator(+) => add_vector
         generic :: operator(-) => minus_vector, minus2_vector
@@ -816,6 +818,8 @@ module modVector ! {{{
         generic :: operator(.dot.) => dot_product_vector
         generic :: operator(.x.) => cross_product_vector
         procedure, pass :: print => print_vector
+
+        generic :: write(formatted) => write_formatted_vector
         final :: finalize_vector
     end type vector ! }}}
     contains
@@ -1027,6 +1031,31 @@ module modVector ! {{{
                 end if
             return
         end subroutine print_vector ! }}}
+
+        subroutine write_formatted_vector(this,unit,iotype,vlist,iostat,iomsg) ! {{{
+            implicit none
+            class(vector), intent(in) :: this
+            integer,intent(in) :: unit
+            character(*),intent(in) :: iotype
+            integer,intent(in) :: vlist(:)
+            integer,intent(out) :: iostat
+            character(*),intent(inout) :: iomsg
+
+            integer(kind=IT) :: j
+            character(:), allocatable :: style
+
+                style = lt
+                do j = 1, this%dim
+                    style = style//space//Deform1
+                end do
+                style = style//rt
+
+                write(unit, style), this%value(:)
+
+                iostat = 0
+            return
+        end subroutine write_formatted_vector ! }}}
+
 end module modVector ! }}}
 module modMatrix ! {{{
 !  this module uses

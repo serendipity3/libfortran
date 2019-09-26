@@ -17,7 +17,8 @@ program main
         a = (/ 1e0_DP, 0e0_DP, 0e0_DP /)
         b = 1e-1_DP
         c = a + b
-        call c%print()
+
+        print *, a
         print *, a .dot. b
         print *, c%length()
         print *, c%length(b)
@@ -25,7 +26,10 @@ program main
         a = units(1:3,1)
         b = units(1:3,2)
         c = a .x. b
-        call c%print()
+
+        print *, c
+
+! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
         call p%init(3)
         call q%init(3)
