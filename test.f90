@@ -7,6 +7,7 @@ program main
     use mathConstants
 
     type(vector) :: a, b, c
+    type(vectorComplex) :: s, t, u
 
     type(matrix) :: p, q, r
 
@@ -18,7 +19,7 @@ program main
         b = 1e-1_DP
         c = a + b
 
-        print *, a
+        print '(DT(7,3))', a
         print *, a .dot. b
         print *, c%length()
         print *, c%length(b)
@@ -29,7 +30,20 @@ program main
 
         print *, c
 
-! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+        print *, "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
+
+        call s%init(3)
+        call t%init(3)
+        call u%init(3)
+
+        s = (/ z1, z0, zi /)
+        t = 2e0_DP * zi
+        print *, s
+        print *, s + c
+        print *, s + t
+        print *, s%conjg()
+ 
+        print *, "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -"
 
         call p%init(3)
         call q%init(3)
