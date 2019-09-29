@@ -51,13 +51,13 @@ program main
 
         p = (/ 1e0_DP, 2e0_DP, -1e0_DP,  3e0_DP, -2e0_DP, 1e0_DP,  1e0_DP, 2e0_DP, 2e0_DP /)
         q = 1e0_DP
-        call p%print()
+        print '(DT(7,3))', p
 
         call p%diagonalize_N(a%value)
         call p%diagonalize_V(a%value, r)
         print *, a
 
-        call r%print()
+        print *, r
 
         r = p + q
     stop

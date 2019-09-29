@@ -1377,6 +1377,8 @@ module modMatrix ! {{{
         procedure, pass :: toArray => convert_toArray_matrix
         procedure, pass :: fromArray => convert_fromArray_matrix
 
+        procedure, pass :: write_formatted_matrix
+
         procedure, pass :: assign_matrix
         procedure, pass :: assign_array_matrix
         procedure, pass :: add_matrix
@@ -1392,7 +1394,8 @@ module modMatrix ! {{{
         generic :: operator(-) => minus_matrix, minus2_matrix
         generic :: operator(*) => multiply_matrix, multiply2_matrix
         generic :: operator(/) => divide_matrix, divide2_matrix
-        procedure, pass :: print => print_matrix
+
+        generic :: write(formatted) => write_formatted_matrix
         final :: finalize_matrix
     end type matrix ! }}}
     type :: matrixComplex ! {{{
@@ -1407,6 +1410,8 @@ module modMatrix ! {{{
         procedure, pass :: fromArray => convert_fromArray_matrixComplex
         procedure, pass :: diagonalize_N => diagonalize_N_matrixComplex
         procedure, pass :: diagonalize_V => diagonalize_V_matrixComplex
+
+        procedure, pass :: write_formatted_matrixComplex
 
         procedure, pass :: assign_matrixComplex
         procedure, pass :: assign_array_matrixComplex
@@ -1423,7 +1428,7 @@ module modMatrix ! {{{
         generic :: operator(-) => minus_matrixComplex, minus2_matrixComplex
         generic :: operator(*) => multiply_matrixComplex, multiply2_matrixComplex
         generic :: operator(/) => divide_matrixComplex, divide2_matrixComplex
-        procedure, pass :: print => print_matrixComplex
+        generic :: write(formatted) => write_formatted_matrixComplex
         final :: finalize_matrixComplex
     end type matrixComplex ! }}}
     contains
@@ -1681,30 +1686,43 @@ module modMatrix ! {{{
             return
         end function divide2_matrix ! }}}
 
-        subroutine print_matrix(this, unit_num_) ! {{{
+        subroutine write_formatted_matrix(this, Unit, IOType, argList, IOStatus, IOMessage) ! {{{
             implicit none
-            class(matrix), intent(inout) :: this
-            integer(kind=IT), intent(in),optional :: unit_num_(1:2)
+            class(matrix), intent(in) :: this
+            integer, intent(in) :: Unit
+            character(*), intent(in) :: IOType
+            integer, intent(in) :: argList(:)
+            integer, intent(out) :: IOStatus
+            character(*), intent(inout) :: IOMessage
+
+            character(2) :: width_tol, width_dec
+            character(6) :: spec
             integer(kind=IT) :: j
             character(:), allocatable :: style
 
-                style = lt//iform1
+            if(IOType == "LISTDIRECTED" .or. size(argList) < 2)then
                 do j = 1, this%dim
-                    style = style//space//Deform1
+                    write(unit=Unit, fmt = *, iostat = IOStatus, iomsg = IOMessage) this%value(:,j)
+                end do
+                IOStatus = 0
+                return
+            else
+                write(width_tol,'(I2)') argList(1)
+                write(width_dec,'(I2)') argList(2)
+                spec = 'F'//width_tol//'.'//width_dec
+                style = lt
+                do j = 1, this%dim
+                    style = style//space//spec
                 end do
                 style = style//rt
 
-                if (present(unit_num_)) then
-                    do j = 1, this%dim
-                        write(unit_num_(1), style) j,  this%value(:, j)
-                    end do
-                else
-                    do j = 1, this%dim
-                        write(*, style) j,  this%value(:, j)
-                    end do
-                end if
+                do j = 1, this%dim
+                    write(unit = Unit, fmt = style, iostat = IOStatus, iomsg = IOMessage) this%value(:,j)
+                end do
+                IOStatus = 0
+            end if
             return
-        end subroutine print_matrix ! }}}
+        end subroutine write_formatted_matrix ! }}}
 ! }}}
 
 ! procedures for matrixComplex {{{
@@ -2035,36 +2053,48 @@ module modMatrix ! {{{
             return
         end function divide2_matrixComplex ! }}}
 
-        subroutine print_matrixComplex(this, unit_num_) ! {{{
+        subroutine write_formatted_matrixComplex(this, Unit, IOType, argList, IOStatus, IOMessage) ! {{{
             implicit none
-            class(matrixComplex), intent(inout) :: this
-            integer(kind=IT), intent(in),optional :: unit_num_(1:2)
+            class(matrixComplex), intent(in) :: this
+            integer, intent(in) :: Unit
+            character(*), intent(in) :: IOType
+            integer, intent(in) :: argList(:)
+            integer, intent(out) :: IOStatus
+            character(*), intent(inout) :: IOMessage
+
+            character(2) :: width_tol, width_dec
+            character(6) :: spec
             integer(kind=IT) :: j
             character(:), allocatable :: style
 
-                style = lt//iform1
+            if(IOType == "LISTDIRECTED" .or. size(argList) < 2)then
+                style = lt
                 do j = 1, this%dim
-                    style = style//space//Deform1
+                    style = style//space//Dzform1
+                end do
+                style = style//rt
+                do j = 1, this%dim
+                    write(unit=Unit, fmt = style, iostat = IOStatus, iomsg = IOMessage) real(this%value(:,j)), aimag(this%value(:,j))
+                end do
+                IOStatus = 0
+                return
+            else
+                write(width_tol,'(I2)') argList(1)
+                write(width_dec,'(I2)') argList(2)
+                spec = 'F'//width_tol//'.'//width_dec
+                style = lt
+                do j = 1, this%dim
+                    style = style//space//spec//space//spec
                 end do
                 style = style//rt
 
-                if (present(unit_num_)) then
-                    do j = 1, this%dim
-                        write(unit_num_(1), style) j,  real(this%value(:, j))
-                        write(unit_num_(2), style) j, aimag(this%value(:, j))
-                    end do
-                else
-                    print *, "real part:"
-                    do j = 1, this%dim
-                        write(*, style) j,  real(this%value(:, j))
-                    end do
-                    print *, "imaginary part:"
-                    do j = 1, this%dim
-                        write(*, style) j, aimag(this%value(:, j))
-                    end do
-                end if
+                do j = 1, this%dim
+                    write(unit = Unit, fmt = style, iostat = IOStatus, iomsg = IOMessage) real(this%value(:,j)), aimag(this%value(:,j))
+                end do
+                IOStatus = 0
+            end if
             return
-        end subroutine print_matrixComplex ! }}}
+        end subroutine write_formatted_matrixComplex ! }}}
 ! }}}
 end module modMatrix ! }}}
 module modSection !{{{
