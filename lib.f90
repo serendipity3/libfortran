@@ -1381,6 +1381,7 @@ module modMatrix ! {{{
 
         procedure, pass :: assign_matrix
         procedure, pass :: assign_array_matrix
+        procedure, pass :: assign_matrix_matrix
         procedure, pass :: add_matrix
         procedure, pass(this) :: add2_matrix
         procedure, pass :: minus_matrix
@@ -1389,7 +1390,7 @@ module modMatrix ! {{{
         procedure, pass(this) :: multiply2_matrix
         procedure, pass :: divide_matrix
         procedure, pass(this) :: divide2_matrix
-        generic :: assignment(=) => assign_matrix, assign_array_matrix
+        generic :: assignment(=) => assign_matrix, assign_array_matrix, assign_matrix_matrix
         generic :: operator(+) => add_matrix, add2_matrix
         generic :: operator(-) => minus_matrix, minus2_matrix
         generic :: operator(*) => multiply_matrix, multiply2_matrix
@@ -1415,6 +1416,7 @@ module modMatrix ! {{{
 
         procedure, pass :: assign_matrixComplex
         procedure, pass :: assign_array_matrixComplex
+        procedure, pass :: assign_matrix_matrixComplex
         procedure, pass :: add_matrixComplex
         procedure, pass(this) :: add2_matrixComplex
         procedure, pass :: minus_matrixComplex
@@ -1423,7 +1425,7 @@ module modMatrix ! {{{
         procedure, pass(this) :: multiply2_matrixComplex
         procedure, pass :: divide_matrixComplex
         procedure, pass(this) :: divide2_matrixComplex
-        generic :: assignment(=) => assign_matrixComplex, assign_array_matrixComplex
+        generic :: assignment(=) => assign_matrixComplex, assign_array_matrixComplex, assign_matrix_matrixComplex
         generic :: operator(+) => add_matrixComplex, add2_matrixComplex
         generic :: operator(-) => minus_matrixComplex, minus2_matrixComplex
         generic :: operator(*) => multiply_matrixComplex, multiply2_matrixComplex
@@ -1473,6 +1475,17 @@ module modMatrix ! {{{
                 end select
             return
         end subroutine assign_array_matrix ! }}}
+
+        subroutine assign_matrix_matrix(this, m_) ! {{{
+            implicit none
+            class(matrix), intent(inout) :: this
+            class(*), intent(in) :: m_(:,:)
+                select type (m_)
+                    type is (real(kind=DP))
+                        this%value(:,:) = m_(:,:)
+                end select
+            return
+        end subroutine assign_matrix_matrix ! }}}
 
         function inverse_matrix(this) result (res) ! {{{
             implicit none
@@ -1768,6 +1781,19 @@ module modMatrix ! {{{
                 end select
             return
         end subroutine assign_array_matrixComplex ! }}}
+
+        subroutine assign_matrix_matrixComplex(this, m_) ! {{{
+            implicit none
+            class(matrixComplex), intent(inout) :: this
+            class(*), intent(in) :: m_(:,:)
+                select type (m_)
+                    type is (real(kind=DP))
+                        this%value(:,:) = m_(:,:)
+                    type is (complex(kind=DP))
+                        this%value(:,:) = m_(:,:)
+                end select
+            return
+        end subroutine assign_matrix_matrixComplex ! }}}
 
         function inverse_matrixComplex(this) result (res) ! {{{
             implicit none

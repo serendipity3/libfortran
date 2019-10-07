@@ -50,6 +50,7 @@ program main
         call r%init(3)
 
         p = (/ 1e0_DP, 2e0_DP, -1e0_DP,  3e0_DP, -2e0_DP, 1e0_DP,  1e0_DP, 2e0_DP, 2e0_DP /)
+        p = (/ (/1e0_DP, 2e0_DP, -1e0_DP/), (/3e0_DP, -2e0_DP, 1e0_DP/), (/1e0_DP, 2e0_DP, 2e0_DP/) /)
         q = 1e0_DP
         print '(DT(7,3))', p
 
