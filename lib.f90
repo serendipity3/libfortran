@@ -882,6 +882,7 @@ module modVector ! {{{
                 do i = 1, this%dim
                     res = res + this%value(i)**2
                 end do
+                res = sqrt(res)
             return
         end function length_vector ! }}}
 
@@ -895,6 +896,7 @@ module modVector ! {{{
                 do i = 1, this%dim
                     res = res + (this%value(i) - v_%value(i))**2
                 end do
+                res = sqrt(res)
             return
         end function length_vector_vector ! }}}
 
