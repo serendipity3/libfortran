@@ -1696,7 +1696,7 @@ module modMatrix ! {{{
                     type is (real(kind=DP))
                         res%value(:,:) = p_ * res%value(:,:)
                     type is (matrix)
-                        res%value(:,:) = matmul(p_%value(:,:), res%value(:,:)
+                        res%value(:,:) = matmul(p_%value(:,:), res%value(:,:))
                 end select
             return
         end function divide2_matrix ! }}}
@@ -2076,7 +2076,7 @@ module modMatrix ! {{{
                     type is (complex(kind=DP))
                         res%value(:,:) = p_ * res%value(:,:)
                     type is (matrixComplex)
-                        res%value(:,:) = matmul(p_%value(:,:), res%value(:,:)
+                        res%value(:,:) = matmul(p_%value(:,:), res%value(:,:))
                 end select
             return
         end function divide2_matrixComplex ! }}}
