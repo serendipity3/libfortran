@@ -964,7 +964,7 @@ module modVector ! {{{
                 allocate(res)
                 call res%init(this%dim)
                 select type(p_)
-                    type is (real(kind=DP))
+                    type is (real)
                         res%value(:) = this%value(:) * p_
                 end select
             return
@@ -978,7 +978,7 @@ module modVector ! {{{
                 allocate(res)
                 call res%init(this%dim)
                 select type(p_)
-                    type is (real(kind=DP))
+                    type is (real)
                         res%value(:) = p_ * this%value(:)
                 end select
             return
@@ -992,7 +992,7 @@ module modVector ! {{{
                 allocate(res)
                 call res%init(this%dim)
                 select type(p_)
-                    type is (real(kind=DP))
+                    type is (real)
                         res%value(:) = this%value(:) / p_
                 end select
             return
@@ -1269,9 +1269,9 @@ module modVector ! {{{
                 allocate(res)
                 call res%init(this%dim)
                 select type(p_)
-                    type is (real(kind=DP))
+                    type is (real)
                         res%value(:) = this%value(:) * p_
-                    type is (complex(kind=DP))
+                    type is (complex)
                         res%value(:) = this%value(:) * p_
                 end select
             return
@@ -1285,9 +1285,9 @@ module modVector ! {{{
                 allocate(res)
                 call res%init(this%dim)
                 select type(p_)
-                    type is (real(kind=DP))
+                    type is (real)
                         res%value(:) = p_ * this%value(:)
-                    type is (complex(kind=DP))
+                    type is (complex)
                         res%value(:) = p_ * this%value(:)
                 end select
             return
@@ -1301,9 +1301,9 @@ module modVector ! {{{
                 allocate(res)
                 call res%init(this%dim)
                 select type(p_)
-                    type is (real(kind=DP))
+                    type is (real)
                         res%value(:) = this%value(:) / p_
-                    type is (complex(kind=DP))
+                    type is (complex)
                         res%value(:) = this%value(:) / p_
                 end select
             return
